@@ -1,6 +1,7 @@
 # Xss-Secure - Golden Secure
 
 ## Description
+
 Golden Secure's XSS Vulnerability Scanner is a powerful cybersecurity tool designed to identify Cross-Site Scripting (XSS) vulnerabilities in web applications. The tool collects historical URLs associated with a domain, injects XSS payloads, and tests them using Selenium to detect exploitable XSS vulnerabilities.
 
 ## Features
