@@ -20,6 +20,14 @@ from rich.panel import Panel
 from rich.progress import track
 import urllib3
 
+
+patterns = [
+    "q=", "s=", "search=", "lang=", "keyword=", "query=", "page=", "keywords=", "year=", "view=", 
+    "email=", "type=", "name=", "p=", "callback=", "jsonp=", "api_key=", "api=", "password=", "email=", 
+    "emailto=", "token=", "username=", "csrf_token=", "unsubscribe_token=", "id=", "item=", "page_id=", 
+    "month=", "immagine=", "list_type=", "url=", "terms=", "categoryid=", "key=", "l=", "begindate=", "enddate="
+]
+
 def fetch_old_urls(domain):
     sources = [
         f"https://web.archive.org/cdx/search/cdx?url={domain}/*&output=json&fl=original",
@@ -45,7 +53,14 @@ def fetch_old_urls(domain):
                     urls.update(extracted_urls)
         except (requests.RequestException, json.JSONDecodeError):
             pass
-    return list(urls)
+    
+
+    filtered_urls = []
+    for url in urls:
+        if any(pattern in url for pattern in patterns):
+            filtered_urls.append(url)
+    
+    return list(set(filtered_urls))
 
 def filter_xss_vulnerable_urls(urls):
     xss_patterns = [r'<script>', r'javascript:', r'onmouseover', r'onerror']
@@ -88,12 +103,11 @@ def test_xss_payloads(urls, payloads):
 
     all_urls_to_test = []
 
-
+    # Generate all payload URLs to test
     for url in track(urls, description="Processing URLs..."):
         for payload in payloads:
             payload_urls = generate_payload_urls(url, payload)
             all_urls_to_test.extend(payload_urls)
-
 
     for idx, payload_url in enumerate(track(all_urls_to_test, description="Testing Payloads...")):
         try:
@@ -104,18 +118,18 @@ def test_xss_payloads(urls, payloads):
                 alert_text = alert.text
                 if alert_text:
                     exploitable_urls.append(payload_url)
+                    print(Fore.RED + f"[!] XSS Vulnerability Found!" + Fore.CYAN + f" Testing payload: {payload_url}")
+                    break  # Stop testing further payloads for this URL, move to the next one
                 alert.accept()
             except TimeoutException:
                 pass
         except UnexpectedAlertPresentException:
             continue
 
-
         #print(Fore.CYAN + f"[{idx+1}/{len(all_urls_to_test)}] Testing payload: {payload_url}")
 
     driver.quit()
 
-    
     report_date = time.strftime('%Y-%m-%d %H:%M:%S')
 
     report_html = f"""
@@ -202,7 +216,7 @@ def prompt_for_domains():
 
 def main():
     console = Console()
-    panel = Panel("""
+    panel = Panel(""" 
     ██   ██ ███████ ███████       ███████ ███████  ██████ ██    ██ ██████  ███████
      ██ ██  ██      ██            ██      ██      ██      ██    ██ ██   ██ ██
       ███   ███████ ███████ █████ ███████ █████   ██      ██    ██ ██████  █████
@@ -213,8 +227,6 @@ def main():
     console.print(panel)
 
     domains = prompt_for_domains()
-    #print(Fore.GREEN + f"Fetched ({len(domains)}) domains for testing.")
-    
     payload_file = input("Enter the path to the payloads file: ").strip()
 
     all_urls = []
